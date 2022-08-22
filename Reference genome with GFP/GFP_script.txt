@@ -1,0 +1,110 @@
+#-------------------
+## GET THE DATA
+#-------------------
+
+# GTF Mus musculus (cDNA, genes)
+wget http://ftp.ensembl.org/pub/release-106/gtf/mus_musculus/Mus_musculus.GRCm39.106.gtf.gz
+
+gunzip Mus_musculus.GRCm39.106.gtf.gz
+
+# FASTA Mus musculus (dna)
+#wget http://ftp.ensembl.org/pub/release-106/fasta/mus_musculus/dna/Mus_musculus.GRCm39.dna_sm.primary_assembly.fa.gz
+
+wget http://ftp.ensembl.org/pub/release-106/fasta/mus_musculus/dna/Mus_musculus.GRCm39.dna.primary_assembly.fa.gz
+
+gunzip Mus_musculus.GRCm39.dna.primary_assembly.fa.gz
+
+#-------------------
+## SETTINGS
+#-------------------
+
+#!/bin/bash
+#SBATCH --job-name=cellranger          # Job name
+#SBATCH --export=ALL                   # Exports all the results at once
+#SBATCH --partition=medium             # Partition name
+#SBATCH --time=3-00:00                 # Runtime in D-HH:MM format
+#SBATCH --nodes=1                      # Number of nodes (keep at 1)
+#SBATCH --ntasks=1                     # Number of tasks per node (keep at 1)
+#SBATCH --signal=2                     # When a job is within sig_time seconds of its end time, send it the signal sig_num
+#SBATCH --no-requeue                   # Specifies that the batch job should never be requeued under any circumstances
+#SBATCH --cpus-per-task=16             # CPU cores requested per task (change for threaded jobs)
+#SBATCH --mem=128G                     # Memory needed per node (total)
+#SBATCH --error=jobid_%j.err           # File to which STDERR will be written, including job ID
+#SBATCH --output=jobid_%j.out          # File to which STDOUT will be written, including job ID
+#SBATCH --mail-type=ALL                # Type of email notification (BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=iclemente.1@alumni.unav.es # Direction email send
+
+# Load CellRanger
+module load CellRanger/6.1.1
+
+# Filter GTF
+cellranger mkgtf \
+  Mus_musculus.GRCm39.106.gtf \
+  Mus_musculus.GRCm39.106.filtered.gtf \
+  --attribute=gene_biotype:protein_coding
+
+# Cellranger mkref
+cellranger mkref \
+  --genome=Mus_musculus_genome \
+  --fasta=Mus_musculus.GRCm39.dna_sm.primary_assembly.fa \
+  --genes=Mus_musculus.GRCm39.106.filtered.gtf
+cellranger mkref \
+  --genome=Mus_musculus_genome \
+  --fasta=Mus_musculus.GRCm39.dna.primary_assembly.fa \
+  --genes=Mus_musculus.GRCm39.106.filtered.gtf
+
+#-------------------
+## GFP PREPARATION
+#-------------------
+
+# GFP
+nano IRES_eGFP.fa 
+
+#cat IRES_eGFP.fa | grep -v "^>" | tr -d "\n" | wc -c
+cat GFP.fa | grep -v "^>" | tr -d "\n" | wc -c
+
+echo -e 'GFP\tunknown\texon\t1\t1283\t.\t+\t.\tgene_id "GFP"; transcript_id "GFP"; gene_name "GFP"; gene_biotype "protein_coding";' > GFP.gtf
+
+cp Mus_musculus.GRCm39.dna.primary_assembly.fa Mus_musculus.GRCm39.dna.primary_assembly_GFP.fa
+
+cat GFP.fa >> Mus_musculus.GRCm39.dna.primary_assembly_GFP.fa
+
+grep ">" Mus_musculus.GRCm39.dna.primary_assembly_GFP.fa
+
+grep -c "^>" Mus_musculus.GRCm39.dna.primary_assembly_GFP.fa
+
+cp Mus_musculus.GRCm39.106.filtered.gtf Mus_musculus.GRCm39.106.filtered.GFP.gtf
+cat GFP.gtf >> Mus_musculus.GRCm39.106.filtered.GFP.gtf
+
+tail Mus_musculus.GRCm39.106.filtered.GFP.gtf
+
+#-------------------
+## OWN REFERENCE GENOME
+#-------------------
+
+#!/bin/bash
+#SBATCH --job-name=cellranger          # Job name
+#SBATCH --export=ALL                   # Exports all the results at once
+#SBATCH --partition=medium             # Partition name
+#SBATCH --time=3-00:00                 # Runtime in D-HH:MM format
+#SBATCH --nodes=1                      # Number of nodes (keep at 1)
+#SBATCH --ntasks=1                     # Number of tasks per node (keep at 1)
+#SBATCH --signal=2                     # When a job is within sig_time seconds of its end time, send it the signal sig_num
+#SBATCH --no-requeue                   # Specifies that the batch job should never be requeued under any circumstances
+#SBATCH --cpus-per-task=16             # CPU cores requested per task (change for threaded jobs)
+#SBATCH --mem=128G                     # Memory needed per node (total)
+#SBATCH --error=jobid_%j.err           # File to which STDERR will be written, including job ID
+#SBATCH --output=jobid_%j.out          # File to which STDOUT will be written, including job ID
+#SBATCH --mail-type=ALL                # Type of email notification (BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=iclemente.1@alumni.unav.es # Direction email send
+
+# Cellranger mkref GFP
+cellranger mkref --genome=Mus_musculus_genome_GFP \
+  --fasta=Mus_musculus.GRCm39.dna.primary_assembly_GFP.fa \
+  --genes=Mus_musculus.GRCm39.106.filtered.GFP.gtf
+
+
+
+
+
+
